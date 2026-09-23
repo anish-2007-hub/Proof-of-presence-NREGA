@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proof of Presence — Anti-Ghost-Worker System for NREGA</title>
+<style>
+:root{--bg:#faf8f4;--card:#fff;--ink:#1c2233;--mute:#667085;--line:#e6e2d9;--saf:#e8740c;--grn:#138808;--navy:#1b2a5c;--ok:#2e9e4f;--rev:#e0a100;--bad:#d64545;--off:#d8d5cc}
+@media(prefers-color-scheme:dark){:root{--bg:#12141c;--card:#1b1e2a;--ink:#eceef4;--mute:#98a0b3;--line:#2c3040;--navy:#9fb2ff;--off:#333748}}
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink)}
+.tri{height:5px;background:linear-gradient(90deg,var(--saf) 33%,#fff 33% 66%,var(--grn) 66%)}
+.wrap{max-width:1080px;margin:auto;padding:0 20px}
+header.hero{padding:56px 0 36px}
+.tag{display:inline-block;font-size:12px;letter-spacing:.08em;font-weight:700;color:var(--saf);border:1px solid var(--saf);padding:3px 10px;border-radius:99px}
+h1{font-size:clamp(30px,5vw,50px);line-height:1.12;margin:16px 0 12px;color:var(--navy)}
+.lead{max-width:680px;color:var(--mute);font-size:18px}
+h2{font-size:26px;margin:0 0 6px;color:var(--navy)}
+section{padding:34px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
+.grid{display:grid;gap:16px}
+.g3{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.demo{grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);align-items:start}
+@media(max-width:820px){.demo{grid-template-columns:1fr}}
+canvas{width:100%;aspect-ratio:4/3;border-radius:10px;background:#eef3e6;display:block}
+@media(prefers-color-scheme:dark){canvas{background:#202a24}}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px}
+button,select{font:inherit;font-size:14px;padding:8px 14px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+button.pri{background:var(--navy);color:#fff;border-color:var(--navy)}
+@media(prefers-color-scheme:dark){button.pri{color:#12141c}}
+button.sync{background:var(--saf);border-color:var(--saf);color:#fff}
+input[type=range]{flex:1;min-width:140px;accent-color:var(--saf)}
+.pill{font-size:12px;font-weight:700;padding:2px 9px;border-radius:99px;color:#fff;white-space:nowrap}
+.p-ok{background:var(--ok)}.p-rev{background:var(--rev)}.p-bad{background:var(--bad)}.p-wait{background:var(--mute)}
+.w{padding:8px 0;border-bottom:1px solid var(--line)}
+.w:last-child{border:0}
+.wh{display:flex;justify-content:space-between;gap:8px;font-size:14px}
+.tl{display:grid;grid-template-columns:repeat(32,1fr);gap:1px;margin-top:5px}
+.tl i{height:9px;border-radius:2px;background:var(--off);opacity:.35}
+.tl i.a{background:var(--ok);opacity:1}.tl i.m{background:var(--bad);opacity:1}.tl i.u{opacity:.9;background:repeating-linear-gradient(45deg,var(--off),var(--off) 3px,transparent 3px 6px)}
+.note{font-size:13px;color:var(--mute)}
+.stat{font-size:13px;color:var(--mute)}
+.q{border-left:4px solid var(--rev);padding:10px 14px;margin-top:10px;background:var(--bg);border-radius:8px}
+.q.bad{border-color:var(--bad)}
+.q b{display:block}
+.steps{counter-reset:s;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.steps .card{position:relative;padding-top:38px}
+.steps .card::before{counter-increment:s;content:counter(s);position:absolute;top:-1px;left:14px;background:var(--saf);color:#fff;font-weight:700;width:28px;height:30px;border-radius:0 0 8px 8px;text-align:center;line-height:30px}
+.steps h3,.card h3{margin:0 0 4px;font-size:16px}
+.steps p,.card p{margin:0;color:var(--mute);font-size:14px}
+.chips span{display:inline-block;margin:3px 4px 3px 0;padding:3px 10px;border:1px solid var(--line);border-radius:99px;font-size:13px}
+footer{padding:30px 0 50px;color:var(--mute);font-size:13px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+  <h1>Proof of Presence</h1>
+  <p class="lead">NMMS checks a worker in with one photo and one GPS ping, then checks them out the same way. Proof of Presence keeps confirming, through nearby phones, that a worker is actually on site — the whole shift, even with zero signal.</p>
+</header>
+
+<section id="demo" style="padding-top:0">
+  <h2>Live simulation of one worksite</h2>
+  <p class="note" style="margin-top:0">Pick a scenario, press Play through the 9:00–17:00 shift, then hit “Sync” when the supervisor’s phone gets signal. Nothing here is auto-rejected — gaps go to a human.</p>
+  <div class="grid demo">
+    <div class="card">
+      <canvas id="cv" width="800" height="600"></canvas>
+      <div class="row">
+        <button class="pri" id="play">▶ Play</button>
+        <input type="range" id="sl" min="0" max="32" value="0" aria-label="Time of day">
+        <b id="clk">09:00</b>
+      </div>
+      <div class="row">
+        <select id="sc" aria-label="Scenario">
+          <option value="normal">Scenario: Honest day</option>
+          <option value="ghost" selected>Scenario: Ghost worker + early leaver</option>
+          <option value="stack">Scenario: Collusion (phones stacked)</option>
+          <option value="battery">Scenario: Dead battery</option>
+        </select>
+        <button class="sync" id="sync">📡 Signal found — Sync</button>
+      </div>
+      <p class="note" style="margin:10px 0 0" id="hint"></p>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center"><b>Presence timeline (15-min slots)</b><span class="pill p-wait" id="net">OFFLINE</span></div>
+      <div id="list"></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <b>Block officer review queue</b>
+    <div id="queue" class="note" style="margin-top:6px">Sync the day’s data to see flagged workers.</div>
+  </div>
+</section>
+
+<section>
+  <h2>How it works</h2>
+  <div class="steps" style="margin-top:16px">
+    <div class="card"><h3>Enrollment</h3><p>One-time signup with the Aadhaar-linked NREGA ID.</p></div>
+    <div class="card"><h3>Check-in</h3><p>Same biometric/geo check-in as today — nothing changes.</p></div>
+    <div class="card"><h3>Continuous pinging</h3><p>Nearby phones (or ₹150–300 BLE tags) exchange random pings all shift.</p></div>
+    <div class="card"><h3>Local aggregation</h3><p>Each phone stores peer confirmations offline until signal appears.</p></div>
+    <div class="card"><h3>Presence scoring</h3><p>Backend rebuilds each worker’s presence timeline for the day.</p></div>
+    <div class="card"><h3>Flag &amp; review</h3><p>Unexplained gaps go to the block officer before wages are released.</p></div>
+  </div>
+</section>
+
+</div>
+
+<script>
+const N=10,S=32,R=100;
+const names=['Sita D.','Ramu K.','Geeta B.','Mohan L.','Laxmi P.','Hari S.','Kamla R.','Bhola J.','Radha M.','Suresh T.'];
+const ctr=[[120,100],[280,90],[195,220]];
+const hints={
+ normal:'Everyone stays on site; all phones ping each other. All workers verify.',
+ ghost:'Mohan checks in at 9:00 and leaves; Suresh slips away in the afternoon. Nobody nearby confirms them after they go.',
+ stack:'Bhola and Radha are absent — their phones are stacked next to Hari’s. Peers still ping them, but the near-zero-distance signature gives it away.',
+ battery:'Kamla is working but her phone dies for ~1.5 hours. She is sent for review with the benefit of the doubt, not penalised.'};
+let sc='ghost',cur=0,synced=false,timer=null,D;
+
+function rng(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+function calc(){
+  const r=rng(7),base=[],st=[];
+  for(let i=0;i<N;i++){const c=ctr[i%3];base.push([c[0]+(r()-.5)*70,c[1]+(r()-.5)*60])}
+  const absent=(i,s)=>sc==='ghost'&&((i===3&&s>=2)||(i===8&&s>=22))||sc==='stack'&&(i===7||i===8);
+  const dead=(i,s)=>sc==='battery'&&i===6&&s>=12&&s<18;
+  const pos=(i,s)=>{
+    if(sc==='stack'&&(i===7||i===8)){const h=pos(5,s);return[h[0]+(i===7?2.5:-2),h[1]+(i===7?-1.5:2.5)]}
+    if(absent(i,s))return[-60-i*10,-60];
+    return[base[i][0]+Math.sin(s*.7+i)*9,base[i][1]+Math.cos(s*.5+i*2)*9]};
+  D={pos:[],pings:[],conf:[],dead,absent,close:{}};
+  for(let s=0;s<S;s++){
+    const p=[];for(let i=0;i<N;i++)p.push(pos(i,s));D.pos.push(p);
+    const pr=[],cf=new Array(N).fill(0);
+    for(let i=0;i<N;i++)for(let j=i+1;j<N;j++){
+      if(dead(i,s)||dead(j,s))continue;
+      if(Math.hypot(p[i][0]-p[j][0],p[i][1]-p[j][1])<R&&r()<.93){pr.push([i,j]);cf[i]++;cf[j]++}}
+    D.pings.push(pr);D.conf.push(cf.map(x=>x>=1));
+    for(let i=0;i<N;i++)for(let j=i+1;j<N;j++){
+      if(Math.hypot(p[i][0]-p[j][0],p[i][1]-p[j][1])<6&&p[i][0]>0)D.close[i+'-'+j]=(D.close[i+'-'+j]||0)+1}
+  }
+}
+
+function analyse(){
+  const n=cur,out=[],stacked=new Set(),hosts=new Set();
+  for(const k in D.close){ // co-located phones for >=60% of the shift
+    if(D.close[k]>=S*.6){const [a,b]=k.split('-').map(Number);
+      [a,b].forEach(x=>{D.absent(x,S-1)?stacked.add(x):hosts.add(x)})}}
+  for(let i=0;i<N;i++){
+    let c=0,gap=0,g=0;
+    for(let s=0;s<n;s++){if(D.conf[s][i]){c++;g=0}else{g++;gap=Math.max(gap,g)}}
+    const pct=n?c/n:0;let status,why='';
+    if(n<4)status='wait';
+    else if(stacked.has(i)){status='bad';why='Phone signature matches another device (near-zero distance) all day — possible phone stacking.'}
+    else if(hosts.has(i)){status='rev';why='Two other phones stayed next to this worker’s phone — check for collusion.'}
+    else if(pct>=.85&&gap<=2)status='ok';
+    else if(pct>=.6){status='rev';why=gap>=4?(D.conf[n-1][i]?`Silent for ${gap*15} min then resumed — dead battery or short break? Benefit of the doubt applies.`:`Last confirmed ${clock(lastSeen(i,n))}, nothing since — left early? Officer to check.`):'Minor gaps in confirmations.'}
+    else{status='bad';why=`Only ${Math.round(pct*100)}% of the shift confirmed by peers; last seen ${clock(lastSeen(i,n))}.`}
+    out.push({i,pct,status,why,c});
+  }
+  return out;
+}
+const lastSeen=(i,n)=>{for(let s=n-1;s>=0;s--)if(D.conf[s][i])return s;return 0};
+const clock=s=>{const m=540+s*15;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0')};
+
+const cv=document.getElementById('cv'),x=cv.getContext('2d');x.scale(2,2);
+function draw(){
+  const s=Math.min(cur,S-1),p=D.pos[s];
+  x.clearRect(0,0,400,300);
+  x.strokeStyle='rgba(19,136,8,.5)';x.setLineDash([6,5]);x.lineWidth=2;
+  x.strokeRect(20,20,360,260);x.setLineDash([]);
+  x.fillStyle='rgba(19,136,8,.75)';x.font='11px system-ui';x.fillText('Worksite geofence (Gram Panchayat)',28,36);
+  x.strokeStyle='rgba(232,116,12,.85)';x.lineWidth=1.5;
+  D.pings[s].forEach(([a,b])=>{x.beginPath();x.moveTo(...p[a]);x.lineTo(...p[b]);x.stroke()});
+  for(let i=0;i<N;i++){
+    const off=D.absent(i,s),dd=D.dead(i,s);
+    if(p[i][0]<0)continue;
+    x.beginPath();x.arc(p[i][0],p[i][1],9,0,7);
+    x.fillStyle=dd?'#8a8f9c':'#1b2a5c';x.fill();
+    x.fillStyle='#fff';x.font='bold 9px system-ui';x.textAlign='center';x.fillText(i+1,p[i][0],p[i][1]+3);
+  }
+  x.textAlign='left';
+  const away=[];for(let i=0;i<N;i++)if(D.pos[s][i][0]<0)away.push(names[i]);
+  x.fillStyle='#666';x.font='11px system-ui';
+  if(away.length&&cur>0)x.fillText('Off-site: '+away.join(', '),28,272);
+  if(sc==='stack'&&cur>0)x.fillText('Off-site (phones left with Hari): Bhola, Radha',28,272);
+  if(synced)return;
+  x.fillStyle='rgba(0,0,0,.55)';x.fillRect(250,8,142,20);x.fillStyle='#fff';x.fillText('📵 No signal — logging locally',255,22);
+}
+
+function render(){
+  document.getElementById('clk').textContent=clock(cur);
+  document.getElementById('sl').value=cur;
+  document.getElementById('net').textContent=synced?'SYNCED':'OFFLINE';
+  document.getElementById('net').className='pill '+(synced?'p-ok':'p-wait');
+  document.getElementById('hint').textContent=hints[sc];
+  draw();
+  const res=analyse(),L=document.getElementById('list');
+  L.innerHTML=res.map(r=>{
+    const cells=Array.from({length:S},(_,s)=>{
+      if(s>=cur)return'<i></i>';
+      if(!synced)return'<i class="u"></i>';
+      return D.conf[s][r.i]?'<i class="a"></i>':'<i class="m"></i>'}).join('');
+    const pill=!synced?['wait','on device']:r.status==='wait'?['wait','…']:r.status==='ok'?['ok','Verified '+Math.round(r.pct*100)+'%']:r.status==='rev'?['rev','Review '+Math.round(r.pct*100)+'%']:['bad','Flagged '+Math.round(r.pct*100)+'%'];
+    return`<div class="w"><div class="wh"><span>${r.i+1}. ${names[r.i]}</span><span class="pill p-${pill[0]}">${pill[1]}</span></div><div class="tl">${cells}</div></div>`}).join('');
+  const Q=document.getElementById('queue');
+  if(!synced){Q.textContent='Data is still on the workers’ phones. Press “Signal found — Sync” to upload it.';return}
+  const fl=res.filter(r=>r.status==='rev'||r.status==='bad');
+  Q.innerHTML=fl.length?fl.map(r=>`<div class="q ${r.status==='bad'?'bad':''}"><b>${names[r.i]} — wage held for officer review</b>${r.why}</div>`).join(''):'No gaps to review. All wages cleared.';
+}
+
+function set(v){cur=Math.max(0,Math.min(S,v));render()}
+document.getElementById('sl').oninput=e=>set(+e.target.value);
+document.getElementById('sync').onclick=()=>{synced=true;render()};
+document.getElementById('sc').onchange=e=>{sc=e.target.value;stop();synced=false;calc();set(0)};
+const pb=document.getElementById('play');
+function stop(){clearInterval(timer);timer=null;pb.textContent='▶ Play'}
+pb.onclick=()=>{
+  if(timer){stop();return}
+  if(cur>=S)cur=0;
+  pb.textContent='⏸ Pause';
+  timer=setInterval(()=>{if(cur>=S){stop();return}set(cur+1)},350)};
+calc();render();
+</script>
+</body>
+</html>
